@@ -11,15 +11,7 @@ Scale = namedtuple("Scale", "instances type")
 def main():
     print("You must target the desired environment with 'bosh' and 'om' CLIs.")
 
-    print("Fetching VM types from OM.")
-    vm_types = _om_curl("/api/v0/vm_types")
-    type_to_vcpu = {
-        vm_type.get("name"):
-            vm_type.get("cpu")
-            for vm_type in vm_types.get("vm_types")
-    }
-
-    print("Fetching products from OM.")
+    print("Fetching deployed products from OM.")
     products = _om_curl("/api/v0/deployed/products")
     cf_product_guid = next((
         product.get("guid")
@@ -38,31 +30,28 @@ def main():
     }
 
     print("Fetching CPU data from BOSH.")
-    core_command = "lscpu | grep 'Thread(s) per core' | cut -d ':' -f 2 | tr -d ' '"
-    bosh_output = subprocess.run(
-        ["bosh", "ssh", "-c", core_command, "-r", "--json"],
-        stdout=subprocess.PIPE,
-        text=True
-    ).stdout
-    core_ratios = {
+    lscpu_output = _bosh_ssh("lscpu")
+    cpu_infos = {
         instance.get("instance").split("/")[0]:
-            int(instance.get("stdout"))
-            for instance in json.loads(bosh_output).get("Tables")[0].get("Rows")
+            _parse_cpu_data(instance.get("stdout"))
+            for instance in json.loads(lscpu_output).get("Tables")[0].get("Rows")
     }
 
     print("Collating data...")
     row_template = "{:<20}{:<15}{:<30}{:<10}{:<10}"
-    headers = ["VM", "Instances", "Type", "vCPUs", "Cores"]
+    headers = ["VM", "Instances", "VM Type", "vCPUs", "Cores"]
     print(f"\n{row_template.format(*headers)}")
+    print(f"{row_template.format(*(['---'] * len(headers)))}")
     for name, scale in ig_to_scale.items():
-        vcpu_count = type_to_vcpu.get(scale.type) * scale.instances
-        vcpu_multiplier = core_ratios.get(name)
+        cpu_info = cpu_infos.get(name)
+        vcpu_count = cpu_info.get("CPU(s)") * scale.instances
+        core_count = cpu_info.get("Core(s) per socket") * scale.instances
         print(row_template.format(
             name,
             scale.instances,
             scale.type,
             vcpu_count,
-            vcpu_count/vcpu_multiplier
+            core_count
         ))
 
 
@@ -73,6 +62,24 @@ def _om_curl(path: str) -> dict:
         text=True
     ).stdout
     return json.loads(response_json)
+
+
+def _bosh_ssh(command: str) -> str:
+    return subprocess.run(
+        ["bosh", "ssh", "-c", command, "-r", "--json"],
+        stdout=subprocess.PIPE,
+        text=True
+    ).stdout
+
+
+def _parse_cpu_data(stdout: str) -> dict:
+    lines = stdout.split("\r\n")
+    split_lines = (
+        [part.strip() for part in line.split(":")]
+        for line in lines
+        if len(line) > 0
+    )
+    return {line[0]: line[1] for line in split_lines}
 
 
 if __name__ == "__main__":
