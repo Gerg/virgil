@@ -12,6 +12,12 @@ CPUData = namedtuple("CPUData", "cores vcpus")
 
 
 def main():
+    print("""
+====================================================================
+ WARNING: This script will not return correct data for all IaaS
+ configurations, especially oversubscribed environments.
+====================================================================
+    """)
     print("You must target the desired environment and deployment with 'bosh' CLI.")
 
     print("Fetching deployed manifest from BOSH.")
