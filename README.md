@@ -8,12 +8,14 @@ Inspired by https://cloud.google.com/compute/docs/instances/set-threads-per-core
 
 ## Instructions
 
-1. Install the [`bosh`](https://bosh.io/docs/cli-v2-install/) and [`om`](https://github.com/pivotal-cf/om) CLIs.
-1. Target the desired environment with both `bosh` and `om`.
+1. Install `python3` and `pip3` (should come with most Operating Systems)
+1. Install the [`bosh`](https://bosh.io/docs/cli-v2-install/) CLI.
+1. `pip3 install -r requirements.txt` (ideally we wouldn't need this step, so it would work in internetless environments) 
+1. Target the desired environment and deployment with `bosh`.
 1. `./virgil.py`
 
 ## Current (Known) Limitations
 
-1. Only works on Linux stemcells
-1. Doesn't work for Isolation Segments
+1. ~Only works on Linux stemcells~
+1. ~Doesn't work for Isolation Segments~
 1. Unvalidated for all IaaSs and configurations (e.g. vSphere Distributed Resource Scheduler)
